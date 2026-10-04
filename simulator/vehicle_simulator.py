@@ -1,47 +1,58 @@
-import requests
+import os
 import random
 import time
 
+import requests
+from dotenv import load_dotenv
 
-# =========================================================
-# CONFIGURATION
-# =========================================================
 
-BASE_URL = "http://127.0.0.1:8000"
+# Load environment variables from the project's .env file.
+load_dotenv()
+
+
+# Deployed backend URL.
+BASE_URL = os.getenv(
+    "API_BASE_URL",
+    "https://cloud-based-vehicle-data-storage.onrender.com"
+)
 
 LOGIN_URL = f"{BASE_URL}/login"
 TELEMETRY_URL = f"{BASE_URL}/telemetry"
 
-USERNAME = "admin"
-PASSWORD = "admin123"
 
-# Vehicle database IDs
+# Authentication credentials.
+USERNAME = os.getenv(
+    "ADMIN_USERNAME",
+    "admin"
+)
+
+PASSWORD = os.getenv(
+    "ADMIN_PASSWORD",
+    "admin123"
+)
+
+
+# Vehicle database IDs.
 VEHICLE_IDS = [1, 2, 3, 4]
 
-# Time between telemetry transmissions
+# Telemetry upload interval.
 SEND_INTERVAL = 5
 
 
-# =========================================================
-# AUTHENTICATION
-# =========================================================
-
 def get_access_token():
-
     login_data = {
         "username": USERNAME,
         "password": PASSWORD
     }
 
     try:
-
         response = requests.post(
             LOGIN_URL,
-            data=login_data
+            data=login_data,
+            timeout=15
         )
 
         if response.status_code == 200:
-
             token_data = response.json()
 
             access_token = token_data.get(
@@ -53,30 +64,21 @@ def get_access_token():
 
             return access_token
 
-        else:
+        print("Authentication failed.")
+        print("Status:", response.status_code)
+        print("Response:", response.text)
 
-            print("Authentication failed.")
-            print("Status:", response.status_code)
-            print("Response:", response.text)
-
-            return None
+        return None
 
     except requests.exceptions.RequestException as error:
-
         print("Connection error while logging in:")
         print(error)
 
         return None
 
 
-# =========================================================
-# GENERATE TELEMETRY
-# =========================================================
-
 def generate_telemetry(vehicle_id):
-
     return {
-
         "vehicle_id": vehicle_id,
 
         "speed": round(
@@ -122,42 +124,50 @@ def generate_telemetry(vehicle_id):
     }
 
 
-# =========================================================
-# SEND TELEMETRY
-# =========================================================
-
 def send_telemetry(
     vehicle_id,
     access_token
 ):
-
     telemetry = generate_telemetry(
         vehicle_id
     )
 
     headers = {
-        "Authorization": f"Bearer {access_token}"
+        "Authorization": (
+            f"Bearer {access_token}"
+        )
     }
 
     try:
-
         response = requests.post(
             TELEMETRY_URL,
             json=telemetry,
-            headers=headers
+            headers=headers,
+            timeout=15
         )
 
         if response.status_code == 200:
-
             print(
                 f"Vehicle {vehicle_id} "
                 f"telemetry uploaded successfully."
             )
 
+            print(
+                f"  Speed: "
+                f"{telemetry['speed']} km/h | "
+                f"RPM: "
+                f"{telemetry['engine_rpm']} | "
+                f"Temperature: "
+                f"{telemetry['engine_temperature']} °C | "
+                f"Fuel: "
+                f"{telemetry['fuel_level']}% | "
+                f"Battery: "
+                f"{telemetry['battery_voltage']} V"
+            )
+
             return True
 
         elif response.status_code == 401:
-
             print(
                 f"Vehicle {vehicle_id}: "
                 "Authentication expired or invalid."
@@ -166,7 +176,6 @@ def send_telemetry(
             return False
 
         else:
-
             print(
                 f"Vehicle {vehicle_id}: "
                 "Telemetry upload failed."
@@ -185,7 +194,6 @@ def send_telemetry(
             return True
 
     except requests.exceptions.RequestException as error:
-
         print(
             f"Vehicle {vehicle_id}: "
             "Connection error."
@@ -196,16 +204,23 @@ def send_telemetry(
         return True
 
 
-# =========================================================
-# MAIN PROGRAM
-# =========================================================
-
 if __name__ == "__main__":
 
     print()
-    print("======================================")
-    print("   MULTI-VEHICLE TELEMETRY SIMULATOR")
-    print("======================================")
+    print(
+        "=========================================="
+    )
+    print(
+        "   CLOUD VEHICLE TELEMETRY SIMULATOR"
+    )
+    print(
+        "=========================================="
+    )
+
+    print(
+        "Backend:",
+        BASE_URL
+    )
 
     print(
         "Vehicles:",
@@ -223,30 +238,26 @@ if __name__ == "__main__":
 
     print()
 
-    # -----------------------------------------------------
-    # LOGIN
-    # -----------------------------------------------------
-
     access_token = get_access_token()
 
     if not access_token:
-
         print()
-        print("Unable to authenticate.")
         print(
-            "Make sure the FastAPI server "
-            "is running."
+            "Unable to authenticate."
+        )
+
+        print(
+            "Make sure the Render backend "
+            "is running and credentials are correct."
         )
 
         exit(1)
 
     print()
-    print("Starting multi-vehicle telemetry...")
+    print(
+        "Starting cloud multi-vehicle telemetry..."
+    )
     print()
-
-    # -----------------------------------------------------
-    # CONTINUOUS TELEMETRY TRANSMISSION
-    # -----------------------------------------------------
 
     while True:
 
@@ -256,10 +267,6 @@ if __name__ == "__main__":
                 vehicle_id,
                 access_token
             )
-
-            # -------------------------------------------------
-            # RE-AUTHENTICATE IF TOKEN IS INVALID
-            # -------------------------------------------------
 
             if not success:
 
@@ -286,16 +293,19 @@ if __name__ == "__main__":
 
                     continue
 
-                # Retry current vehicle
                 send_telemetry(
                     vehicle_id,
                     access_token
                 )
 
         print()
+
         print(
             f"Waiting {SEND_INTERVAL} seconds..."
         )
+
         print()
 
-        time.sleep(SEND_INTERVAL)
+        time.sleep(
+            SEND_INTERVAL
+        )

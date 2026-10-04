@@ -5,71 +5,42 @@ from dotenv import load_dotenv
 from jose import jwt, JWTError
 
 
-# =========================================================
-# LOAD ENVIRONMENT VARIABLES
-# =========================================================
-
 load_dotenv()
 
 
-# =========================================================
-# SECURITY CONFIGURATION
-# =========================================================
-
-SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY"
-)
-
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
-
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-
-ADMIN_USERNAME = os.getenv(
-    "ADMIN_USERNAME"
-)
-
-ADMIN_PASSWORD = os.getenv(
-    "ADMIN_PASSWORD"
-)
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 
-# =========================================================
-# VALIDATE REQUIRED CONFIGURATION
-# =========================================================
-
+# Production configuration validation
 if not SECRET_KEY:
-
     raise RuntimeError(
-        "JWT_SECRET_KEY is not configured in .env"
+        "JWT_SECRET_KEY is not configured in environment variables."
     )
-
 
 if not ADMIN_USERNAME:
-
     raise RuntimeError(
-        "ADMIN_USERNAME is not configured in .env"
+        "ADMIN_USERNAME is not configured in environment variables."
     )
-
 
 if not ADMIN_PASSWORD:
-
     raise RuntimeError(
-        "ADMIN_PASSWORD is not configured in .env"
+        "ADMIN_PASSWORD is not configured in environment variables."
     )
 
 
-# =========================================================
-# CREATE ACCESS TOKEN
-# =========================================================
-
 def create_access_token(data: dict):
+    """
+    Create a JWT access token with an expiration time.
+    """
 
     to_encode = data.copy()
 
-    expire = datetime.now(
-        timezone.utc
-    ) + timedelta(
+    expire = datetime.now(timezone.utc) + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
 
@@ -84,30 +55,24 @@ def create_access_token(data: dict):
     )
 
 
-# =========================================================
-# VERIFY ACCESS TOKEN
-# =========================================================
-
 def verify_access_token(token: str):
+    """
+    Validate a JWT access token and return the username.
+    """
 
     try:
-
         payload = jwt.decode(
             token,
             SECRET_KEY,
             algorithms=[ALGORITHM]
         )
 
-        username = payload.get(
-            "sub"
-        )
+        username = payload.get("sub")
 
         if not username:
-
             return None
 
         return username
 
     except JWTError:
-
         return None
