@@ -1,22 +1,45 @@
-import streamlit as st
-import requests
+import os
+
 import pandas as pd
 import plotly.express as px
+import requests
+import streamlit as st
+from dotenv import load_dotenv
+
+
+# =========================================================
+# LOAD ENVIRONMENT VARIABLES
+# =========================================================
+
+load_dotenv()
 
 
 # =========================================================
 # CONFIGURATION
 # =========================================================
 
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = os.getenv(
+    "API_BASE_URL",
+    "https://cloud-based-vehicle-data-storage.onrender.com"
+)
 
 LOGIN_URL = f"{API_BASE_URL}/login"
 VEHICLES_URL = f"{API_BASE_URL}/vehicles"
 
+USERNAME = os.getenv(
+    "ADMIN_USERNAME",
+    "admin"
+)
 
-USERNAME = "admin"
-PASSWORD = "admin123"
+PASSWORD = os.getenv(
+    "ADMIN_PASSWORD",
+    "admin123"
+)
 
+
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
 
 st.set_page_config(
     page_title="Vehicle Telemetry Dashboard",
@@ -30,22 +53,19 @@ st.set_page_config(
 # =========================================================
 
 def get_access_token():
-
     login_data = {
         "username": USERNAME,
         "password": PASSWORD
     }
 
     try:
-
         response = requests.post(
             LOGIN_URL,
             data=login_data,
-            timeout=5
+            timeout=15
         )
 
         if response.status_code == 200:
-
             return response.json().get(
                 "access_token"
             )
@@ -53,20 +73,16 @@ def get_access_token():
         return None
 
     except requests.exceptions.RequestException:
-
         return None
 
 
 def get_auth_headers():
-
     if "access_token" not in st.session_state:
-
         st.session_state.access_token = (
             get_access_token()
         )
 
     if not st.session_state.access_token:
-
         return None
 
     return {
@@ -77,22 +93,19 @@ def get_auth_headers():
 
 
 def authenticated_get(url):
-
     headers = get_auth_headers()
 
     if not headers:
-
         return None
 
     try:
-
         response = requests.get(
             url,
             headers=headers,
-            timeout=5
+            timeout=15
         )
 
-        # Refresh token if authentication expired
+        # Refresh token if authentication expired.
         if response.status_code == 401:
 
             st.session_state.access_token = (
@@ -102,19 +115,17 @@ def authenticated_get(url):
             headers = get_auth_headers()
 
             if not headers:
-
                 return response
 
             response = requests.get(
                 url,
                 headers=headers,
-                timeout=5
+                timeout=15
             )
 
         return response
 
     except requests.exceptions.RequestException:
-
         return None
 
 
@@ -130,6 +141,10 @@ st.caption(
     "Cloud-Based Vehicle Data Storage & Analytics Platform"
 )
 
+st.caption(
+    f"Backend: {API_BASE_URL}"
+)
+
 st.divider()
 
 
@@ -138,7 +153,6 @@ st.divider()
 # =========================================================
 
 if "access_token" not in st.session_state:
-
     st.session_state.access_token = (
         get_access_token()
     )
@@ -151,8 +165,8 @@ if not st.session_state.access_token:
     )
 
     st.info(
-        "Make sure the FastAPI server is running "
-        "on http://127.0.0.1:8000"
+        "Check the API URL and authentication "
+        "environment variables."
     )
 
     st.stop()
@@ -467,7 +481,7 @@ df["timestamp"] = pd.to_datetime(
 )
 
 
-# Sort oldest → newest
+# Sort oldest → newest.
 df = df.sort_values(
     "timestamp"
 ).reset_index(
@@ -504,19 +518,12 @@ if (
 else:
 
     analytics = {
-
         "total_records": len(df),
-
         "average_speed": 0,
-
         "maximum_speed": 0,
-
         "average_rpm": 0,
-
         "maximum_temperature": 0,
-
         "minimum_fuel": 0,
-
         "average_battery_voltage": 0
     }
 
@@ -849,6 +856,7 @@ if alerts:
             )
         )
 
+
         alerts_df = alerts_df.sort_values(
             "timestamp",
             ascending=False
@@ -883,7 +891,6 @@ if alerts:
         use_container_width=True,
         hide_index=True
     )
-
 
 else:
 
@@ -949,5 +956,5 @@ st.divider()
 
 st.caption(
     "Cloud-Based Vehicle Data Storage & Analytics Platform "
-    "| FastAPI + SQLite + Streamlit"
+    "| FastAPI + PostgreSQL + Streamlit"
 )
